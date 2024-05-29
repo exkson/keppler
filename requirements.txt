@@ -1,0 +1,6 @@
+Telethon~=1.35
+python-dotenv
+Pillow~=10.3
+peewee~=3.17
+mistralai==0.1.8
+
