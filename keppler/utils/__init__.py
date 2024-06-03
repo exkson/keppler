@@ -7,7 +7,6 @@ parser = Parser()
 
 
 async def process(stage: Stage, message: str) -> tuple[str, KeyBoard | None]:
-
     if stage.action == "create":
         model = stage.model
 
@@ -40,4 +39,12 @@ def get_keyboard(user_id: int):
     if user.cars.count() > user.assurances.count():
         return KeyBoard.ASSURANCE_CREATION
 
+    if user.cars.count() == user.assurances.count():
+        return KeyBoard.CHECK_ROYALTIES
+
     return KeyBoard.AUTHENTICATED_USER
+
+
+def load_fixtures(fixtures: dict):
+    for klass, rows in fixtures.items():
+        klass.bulk_create([klass(**row) for row in rows])

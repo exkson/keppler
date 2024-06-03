@@ -19,9 +19,9 @@ from keppler.models import (
     Document,
     db,
 )
-from keppler.utils import process
+from keppler.fixtures import FIXTURES
+from keppler.utils import process, load_fixtures, get_keyboard
 from keppler.constants import messages
-
 from keppler.keyboards import KeyBoard
 
 logging.basicConfig(
@@ -91,7 +91,9 @@ async def action(event: events.CallbackQuery.Event):
                     Stage.model: "assurance",
                 }
             ).where(Stage.user_id == stage.user_id).execute()
-            msg = messages.ASK_ASSURANCE_INFORMATIONS_MSG
+            msg = messages.ASK_ASSURANCE_INFORMATIONS_MSG.format(
+                assurance_choices=Clause.get_choices()
+            )
         case "confirm":
             model = stage.model
 
@@ -139,8 +141,8 @@ async def action(event: events.CallbackQuery.Event):
                     }
                 ).where(Stage.user_id == stage.user_id).execute()
 
-                msg = "Enregistrement effectué avec succès.\n Que désiez-vous faire maintenant ?"
-                buttons = KeyBoard.AUTHENTICATED_USER
+                msg = "Enregistrement effectué avec succès.\n Que désirez-vous faire maintenant ?"
+                buttons = get_keyboard(event.sender_id)
 
     await bot.send_message(
         event.chat_id,
@@ -153,10 +155,13 @@ if __name__ == "__main__":
     db.create_tables(
         [User, Stage, Payment, Car, Assurance, AssuranceClause, Clause, Document]
     )
+    load_fixtures(FIXTURES)
+
     bot.start(
         bot_token=os.environ["TG_BOT_TOKEN"],
     )
     bot.run_until_disconnected()
+
     db.drop_tables(
         [User, Stage, Payment, Car, Assurance, AssuranceClause, Clause, Document]
     )

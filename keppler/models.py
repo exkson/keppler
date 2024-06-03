@@ -56,8 +56,12 @@ class Document(BaseModel):
 
 class Clause(BaseModel):
     title = pw.CharField(max_length=100)
-    content = pw.TextField()
-    is_active = pw.BooleanField(default=True)
+    description = pw.TextField(default="")
+    mandatory = pw.BooleanField(default=False)
+
+    @staticmethod
+    def get_choices():
+        return "\n".join([f"{clause.id}. {clause.title}" for clause in Clause.select()])
 
 
 class Car(BaseModel):
@@ -110,8 +114,6 @@ class Assurance(BaseModel):
 class AssuranceClause(BaseModel):
     assurance = pw.ForeignKeyField(Assurance, backref="clauses")
     clause = pw.ForeignKeyField(Clause, backref="assurances")
-    start_date = pw.DateField()
-    end_date = pw.DateField()
 
 
 class Payment(BaseModel):

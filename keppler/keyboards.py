@@ -35,6 +35,7 @@ class KeyBoard(list, Enum):
     UNAUTHENTICATED_USER = [
         Button.inline("📝 M'enregistrer", "register"),
     ]
+    CHECK_ROYALTIES = [[Button.inline("Consulter ma redevance 🔍")], *CAR_CREATION]
 
     CONFIRM = [
         Button.inline("Confirmer ✅", "confirm"),
