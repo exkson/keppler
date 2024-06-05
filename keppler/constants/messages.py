@@ -15,7 +15,7 @@ CREATION_CONFIRMATION_MSG = {
     "car": """Désirez-vous vous enregistrer votre voiture avec les informations suivantes ?
 - Marque: {brand}
 - Modèle: {model}
-- Immatriculation {registration_number}
+- Immatriculation: {registration_number}
 - Année de mise en circulation: {year}
 - Energie: {energy}
 - Puissance: {power}
@@ -33,10 +33,10 @@ CREATION_CONFIRMATION_MSG = {
 
 ASK_USER_CREATION_MSG = """Merci de vous présenter avec vos informations pour que je puisse vous enregistrer.
 Exemple: \n
-Moi c'est Jean Dupont. Je suis né le 8 Décembre 1966, je suis Ingénieur et mon téléphone est 0123456789 :)"""
+Moi c'est Jean Dupont. Je suis né le 8 Décembre 1966, je suis Ingénieur et mon téléphone est 0123456789. Mon mail est jean@dupont.com"""
 
 ASK_CAR_INFORMATIONS_MSG = """Parlez moi un peu de votre voiture.
-J'ai besoin des informations : marque et modèle, année de mise en circulation, énergie, puissance, nombre de places, valeur déclarée, valeur d'origine.            
+J'ai besoin des informations : marque, modèle, immatriculation, valeur déclarée, valeur d'origine, année de mise en circulation, énergie, puissance, nombre de places, ...
 """
 
 ASK_ASSURANCE_INFORMATIONS_MSG = """Pour enregistrer votre assurance, répondez aux questions suivantes : 
@@ -50,6 +50,12 @@ Les garanties que nous offrons sont :
 Par exemple, vous pouvez saisir votre réponse sous la forme : 
 Je veux les garanties 1, 3, 6 pour la période du 3 Mars 2024 au 18 Avril 2024 et un paiement tous les 6 mois pour la voiture CE32829RB.
 """
+
+INFORMATIONS_ASKING_MSG = {
+    "user": ASK_USER_CREATION_MSG,
+    "car": ASK_CAR_INFORMATIONS_MSG,
+    "assurance": ASK_ASSURANCE_INFORMATIONS_MSG,
+}
 
 
 class Models(str, Enum):

@@ -1,6 +1,5 @@
 import os
 import json
-from datetime import datetime as dt
 from typing import Any
 
 from dotenv import load_dotenv
@@ -27,7 +26,7 @@ class Parser:
             },
             {
                 "role": "assistant",
-                "content": '{"first_name": "Jean", "last_name": "Dupont", "birth_date": "1966-08-12", "profession": "Ingénieur", "phone": "0123456789", "email": "john@dupont.com"}',
+                "content": '{"first_name": "Jean", "last_name": "Dupont", "birth_date": "1966-08-12", "profession": "ingénieur", "phone": "0123456789", "email": "john@dupont.com"}',
             },
             {
                 "role": "user",
@@ -77,19 +76,19 @@ class Parser:
             },
             {
                 "role": "user",
-                "content": "Je veux assurer ma voiture immatriculée CE32829RB du 3 Mars 2024 au 18 Avril 2024 avec les garanties 1, 3, 6.",
+                "content": "Je veux assurer ma voiture immatriculée CE32829RB du 3 Mars 2024 au 18 Avril 2024 avec les garanties 1, 3, 6. Paiement tous les 6 mois.",
             },
             {
                 "role": "assistant",
-                "content": '{"start_date": "2024-03-03", "end_date": "2024-04-18", "registration_number": "CE32829RB", "clauses": [1, 3, 6]}',
+                "content": '{"start_date": "2024-03-03", "end_date": "2024-04-18", "registration_number": "CE32829RB", "clauses": [1, 3, 6], "frequency": 6}',
             },
             {
                 "role": "user",
-                "content": "CA9921RB du 22 Janvier 2023 au 25 Avril 2024 avec les garanties 4, 2.",
+                "content": "CA9921RB du 22 Janvier 2023 au 25 Avril 2024 avec les garanties 4, 2. Fréquence 3 mois",
             },
             {
                 "role": "assistant",
-                "content": '{"start_date": "2023-01-22", "end_date": "2024-04-25", "registration_number": "CA9921RB", "clauses": [4, 2]}',
+                "content": '{"start_date": "2023-01-22", "end_date": "2024-04-25", "registration_number": "CA9921RB", "clauses": [4, 2], "frequency": 3}',
             },
         ],
     }
@@ -122,12 +121,28 @@ class Parser:
         },
     }
 
+    HUMAN_READABLE_FIELDS = {
+        "first_name": "Prénom",
+        "last_name": "Nom",
+        "birth_date": "Date de naissance",
+        "profession": "Profession",
+        "email": "Adresse mail",
+        "brand": "Marque",
+        "model": "Modèle",
+        "registration_number": "Immatriculation",
+        "declared_value": "Valeur déclarée",
+        "initial_value": "Valeur initiale",
+        "start_date": "Date de début",
+        "end_date": "Date de fin",
+        "frequency": "Fréquence",
+    }
     REQUIRED_FIELDS_MAP = {
         "user": [
             "first_name",
             "last_name",
             "birth_date",
             "profession",
+            "email",
         ],
         "car": [
             "brand",
@@ -140,7 +155,6 @@ class Parser:
             "start_date",
             "end_date",
             "frequency",
-            "registration_number",
         ],
     }
 
@@ -171,10 +185,12 @@ class Parser:
         required_fields = self.REQUIRED_FIELDS_MAP[model]
 
         for key in required_fields:
-            if key not in data:
-                return "Veuillez fournir le {missing_key} necéssaires.".format(
-                    missing_key=key
+            if not data.get(key):
+                return "Veuillez reprendre votre message avec toutes les informations demandées y compris {missing_key}".format(
+                    missing_key=self.HUMAN_READABLE_FIELDS.get(key)
                 )
+        if model == "user" and User.get_or_none(User.email == data["email"]):
+            return "Un utilisateur existe déjà avec ce mail."
         return data
 
     def create(self, model: str, validated_data: dict[str, Any], **kwargs) -> pw.Model:

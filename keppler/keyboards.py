@@ -4,38 +4,33 @@ from telethon import Button
 
 
 class KeyBoard(list, Enum):
+    CREATE_CAR = [
+        Button.inline("📝 Enregistrer une voiture", "create-car"),
+    ]
+    PAY = [Button.inline("Payer ma redevance", "pay")]
+    SUBSRIBE = [Button.inline("Souscrire à une assurance 🚘", "create-assurance")]
+    UNAUTHENTICATED_USER = [
+        Button.inline("📝 M'enregistrer", "create-user"),
+    ]
+    CHECK_ROYALTY = [Button.inline("Consulter ma redevance 🔍", "check-royalties")]
+
     AUTHENTICATED_USER = [
-        [
-            Button.inline("Souscrire à une assurance 🚘", "subscribe"),
-            Button.inline("Payer ma redevance", "pay"),
-        ],
-        [
-            # Button.inline("Consulter la FAQ 📚", "faq"),
-            # Button.inline("Prendre rendez-vous 📞", "contact"),
-            Button.inline("📝 Enrégistrer une voiture", "declare-car"),
-        ],
+        [*SUBSRIBE, *PAY],
+        CREATE_CAR,
     ]
     CAR_CREATION = [
-        [Button.inline("Enregistrer une voiture 🚘", "declare-car")],
-        [
-            Button.inline("Souscrire à une assurance 📄", "subscribe"),
-            Button.inline("Payer ma redevance 💰", "pay"),
-        ],
+        CREATE_CAR,
+        [*SUBSRIBE, *PAY],
     ]
 
     ASSURANCE_CREATION = [
+        SUBSRIBE,
         [
-            Button.inline("Souscrire à une assurance 📄", "subscribe"),
-        ],
-        [
-            Button.inline("Payer ma redevance 💰", "pay"),
-            Button.inline("Enregistrer une voiture 🚘", "declare-car"),
+            *PAY,
+            *CREATE_CAR,
         ],
     ]
-    UNAUTHENTICATED_USER = [
-        Button.inline("📝 M'enregistrer", "register"),
-    ]
-    CHECK_ROYALTIES = [[Button.inline("Consulter ma redevance 🔍")], *CAR_CREATION]
+    CHECK_ROYALTIES = [CHECK_ROYALTY, *CAR_CREATION]
 
     CONFIRM = [
         Button.inline("Confirmer ✅", "confirm"),

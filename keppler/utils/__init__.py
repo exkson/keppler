@@ -24,7 +24,7 @@ async def process(stage: Stage, message: str) -> tuple[str, KeyBoard | None]:
                 messages.CREATION_CONFIRMATION_MSG[model].format(**validated_data),
                 KeyBoard.CONFIRM,
             )
-    return message, KeyBoard.AUTHENTICATED_USER
+    return message, get_keyboard(stage.user_id)
 
 
 def get_keyboard(user_id: int):

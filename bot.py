@@ -1,5 +1,6 @@
 import os
-from datetime import date
+from datetime import date, datetime
+import hashlib
 import logging
 
 import dotenv
@@ -63,42 +64,41 @@ async def incoming_message(event: events.NewMessage.Event):
 
 @bot.on(events.CallbackQuery)
 async def action(event: events.CallbackQuery.Event):
-    data = event.data.decode()
+    data: str = event.data.decode()
     stage: Stage = Stage.get(user_id=event.sender_id)
 
     msg = ""
     buttons = None
 
-    match data:
-        case "register":
-            # Register as new user
-            Stage.update({Stage.level: "filling"}).where(
-                Stage.user_id == stage.user_id
-            ).execute()
-            msg = messages.ASK_USER_CREATION_MSG
-        case "declare-car":
-            # Declare a new car
-            Stage.update(
-                {Stage.level: "filling", Stage.action: "create", Stage.model: "car"}
-            ).where(Stage.user_id == stage.user_id).execute()
-            msg = messages.ASK_CAR_INFORMATIONS_MSG
-        case "subscribe":
-            # Subscribe to an assurance
-            Stage.update(
+    if data.startswith("create-"):
+        model = data.split("-", 1)[-1]
+        Stage.update(
+            {Stage.level: "filling", Stage.action: "create", Stage.model: model}
+        ).where(Stage.user_id == stage.user_id).execute()
+        msg = messages.INFORMATIONS_ASKING_MSG[model].format(
+            **(
                 {
-                    Stage.level: "filling",
-                    Stage.action: "create",
-                    Stage.model: "assurance",
-                }
-            ).where(Stage.user_id == stage.user_id).execute()
-            msg = messages.ASK_ASSURANCE_INFORMATIONS_MSG.format(
-                assurance_choices=Clause.get_choices()
+                    "assurance": {
+                        "assurance_choices": Clause.get_choices(),
+                    }
+                }.get(model, {})
             )
+        )
+    match data:
+        case "check-royalties":
+            user: User = User.get(User.id == stage.user_id)
+            msg = "\n".join(
+                [
+                    "{} {}".format(*assurance)
+                    for assurance in user.get_royalties().items()
+                ]
+            )
+            buttons = KeyBoard.CHECK_ROYALTIES
         case "confirm":
             model = stage.model
 
             if stage.action == "create":
-                data = stage.data[0]
+                data: dict = stage.data[0]
                 klass: type[pw.Model] = {
                     "user": User,
                     "car": Car,
@@ -111,18 +111,22 @@ async def action(event: events.CallbackQuery.Event):
                     data["id"] = event.sender_id
                 else:
                     data["user_id"] = event.sender_id
+
+                validated_data = {k: v for k, v in data.items() if v is not None}
                 if model == "assurance":
-                    data["start_date"] = date.today()
-                    data["end_date"] = date.today()
-                    data["policy_number"] = "123456789"
-                    data["car"] = Car.get(
+                    validated_data["start_date"] = date.today()
+                    validated_data["end_date"] = date.today()
+                    validated_data["policy_number"] = hashlib.sha256(
+                        datetime.now().isoformat().encode()
+                    ).hexdigest()[:8]
+                    validated_data["car"] = Car.get(
                         registration_number=data["registration_number"],
                         user_id=event.sender_id,
                     )
 
-                    clauses = data.pop("clauses", [])
+                    clauses = validated_data.pop("clauses", [])
 
-                    assurance = klass.create(**data)
+                    assurance = klass.create(**validated_data)
                     AssuranceClause.bulk_create(
                         [
                             AssuranceClause(assurance=assurance, clause_id=clause)
@@ -130,7 +134,7 @@ async def action(event: events.CallbackQuery.Event):
                         ]
                     )
                 else:
-                    klass.create(**data)
+                    klass.create(**validated_data)
 
                 Stage.update(
                     {
@@ -143,7 +147,8 @@ async def action(event: events.CallbackQuery.Event):
 
                 msg = "Enregistrement effectué avec succès.\n Que désirez-vous faire maintenant ?"
                 buttons = get_keyboard(event.sender_id)
-
+        case "modify":
+            msg = "Saisissez à nouveau votre message"
     await bot.send_message(
         event.chat_id,
         msg,
@@ -162,7 +167,5 @@ if __name__ == "__main__":
     )
     bot.run_until_disconnected()
 
-    db.drop_tables(
-        [User, Stage, Payment, Car, Assurance, AssuranceClause, Clause, Document]
-    )
+    db.drop_tables([Clause])
     db.close()

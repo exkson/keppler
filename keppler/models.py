@@ -1,4 +1,6 @@
+import random as rd
 from datetime import datetime as dt, date
+from decimal import Decimal
 
 import peewee as pw
 from playhouse.sqlite_ext import JSONField
@@ -40,6 +42,12 @@ class User(BaseModel):
     address = pw.CharField(max_length=255, default="")
     city = pw.CharField(max_length=100, default="")
     country = pw.CharField(max_length=100, default="")
+
+    def get_royalties(self):
+        return {
+            assurance.policy_number: assurance.get_royalty()
+            for assurance in self.assurances.select()
+        }
 
 
 class Document(BaseModel):
@@ -109,6 +117,9 @@ class Assurance(BaseModel):
             > dt.today().date() | AssuranceClause.end_date
             == None
         )
+
+    def get_royalty(self) -> Decimal:
+        return round(Decimal(rd.random() * 1e6), 2)
 
 
 class AssuranceClause(BaseModel):
