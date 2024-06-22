@@ -122,26 +122,26 @@ class Parser:
     }
 
     HUMAN_READABLE_FIELDS = {
-        "first_name": "Prénom",
-        "last_name": "Nom",
-        "birth_date": "Date de naissance",
-        "profession": "Profession",
-        "email": "Adresse mail",
-        "brand": "Marque",
-        "model": "Modèle",
-        "registration_number": "Immatriculation",
-        "declared_value": "Valeur déclarée",
-        "initial_value": "Valeur initiale",
-        "start_date": "Date de début",
-        "end_date": "Date de fin",
-        "frequency": "Fréquence",
+        "first_name": "prénom",
+        "last_name": "nom",
+        "birth_date": "date de naissance",
+        "phone": "téléphone",
+        "email": "adresse mail",
+        "brand": "marque",
+        "model": "modèle",
+        "registration_number": "immatriculation",
+        "declared_value": "valeur déclarée",
+        "initial_value": "valeur initiale",
+        "start_date": "date de début",
+        "end_date": "date de fin",
+        "frequency": "fréquence",
     }
     REQUIRED_FIELDS_MAP = {
         "user": [
             "first_name",
             "last_name",
             "birth_date",
-            "profession",
+            "phone",
             "email",
         ],
         "car": [
@@ -154,7 +154,9 @@ class Parser:
         "assurance": [
             "start_date",
             "end_date",
+            "registration_number",
             "frequency",
+            "clauses",
         ],
     }
 
@@ -180,17 +182,41 @@ class Parser:
         return json.loads(text)
 
     def validate_model_informations(
-        self, model: str, data: dict[str, Any]
+        self, model: str, data: dict[str, Any], user_id
     ) -> dict[str, Any] | str:
         required_fields = self.REQUIRED_FIELDS_MAP[model]
 
-        for key in required_fields:
-            if not data.get(key):
-                return "Veuillez reprendre votre message avec toutes les informations demandées y compris {missing_key}".format(
-                    missing_key=self.HUMAN_READABLE_FIELDS.get(key)
-                )
+        missing_fields = [
+            self.HUMAN_READABLE_FIELDS[f] for f in required_fields if not data.get(f)
+        ]
+        if missing_fields:
+            return "Veuillez reprendre votre message avec toutes les informations demandées y compris {missing_fields}".format(
+                missing_fields=", ".join(missing_fields)
+            )
+
+        # FIXME : move this validations to validate_<model>
         if model == "user" and User.get_or_none(User.email == data["email"]):
             return "Un utilisateur existe déjà avec ce mail."
+
+        if model == "car":
+            if Car.get_or_none(Car.registration_number == data["registration_number"]):
+                return "Une voiture existe déjà avec cette immatriculation."
+
+        if model == "assurance":
+            if not (
+                Car.get_or_none(
+                    Car.registration_number == data["registration_number"],
+                    Car.user_id == user_id,
+                )
+            ):
+                return "Aucune voiture n'a été trouvée avec cette immatriculation."
+
+            if data["start_date"] > data["end_date"]:
+                return "La date de début doit être inférieure à la date de fin."
+
+            if data.get("frequency") not in [1, 3, 6]:
+                return "La fréquence de paiement doit être 1, 3 ou 6 mois."
+
         return data
 
     def create(self, model: str, validated_data: dict[str, Any], **kwargs) -> pw.Model:

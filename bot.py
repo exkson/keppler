@@ -22,6 +22,7 @@ from keppler.models import (
 )
 from keppler.fixtures import FIXTURES
 from keppler.utils import process, load_fixtures, get_keyboard
+from keppler.command import handle_command
 from keppler.constants import messages
 from keppler.keyboards import KeyBoard
 
@@ -41,19 +42,26 @@ bot = TelegramClient(
 
 @bot.on(events.NewMessage)
 async def incoming_message(event: events.NewMessage.Event):
-    stage, created = Stage.get_or_create(
-        user_id=event.sender_id,
-        defaults={"model": "user", "action": "create", "level": "new"},
-    )
-    if created:
-        await bot.send_message(
-            event.chat_id,
-            messages.WELCOME_UNAUTHENTICATED_USER_MSG,
-            buttons=KeyBoard.UNAUTHENTICATED_USER,
-        )
-        return
+    text = event.text
 
-    message, keyboard = await process(stage=stage, message=event.text)
+    if text.startswith("/"):
+        message = "Commande executée"
+        handle_command(text)
+        keyboard = get_keyboard(event.sender_id)
+    else:
+        stage, created = Stage.get_or_create(
+            user_id=event.sender_id,
+            defaults={"model": "user", "action": "create", "level": "new"},
+        )
+        if created:
+            await bot.send_message(
+                event.chat_id,
+                messages.WELCOME_UNAUTHENTICATED_USER_MSG,
+                buttons=KeyBoard.UNAUTHENTICATED_USER,
+            )
+            return
+
+        message, keyboard = await process(stage=stage, message=text)
 
     await bot.send_message(
         event.chat_id,
@@ -62,6 +70,7 @@ async def incoming_message(event: events.NewMessage.Event):
     )
 
 
+# Listen buttons events
 @bot.on(events.CallbackQuery)
 async def action(event: events.CallbackQuery.Event):
     data: str = event.data.decode()
@@ -87,13 +96,39 @@ async def action(event: events.CallbackQuery.Event):
     match data:
         case "check-royalties":
             user: User = User.get(User.id == stage.user_id)
-            msg = "\n".join(
-                [
-                    "{} {}".format(*assurance)
-                    for assurance in user.get_royalties().items()
-                ]
-            )
+            royalties = user.get_royalties()
+
+            if len(royalties) > 0:
+                msg = messages.ROYALTY_CHECK_MSG.format(
+                    royalties="----------".join(
+                        [
+                            """
+Voiture : %(car)s
+Assurance : %(policy_number)s
+Montant : %(amount)s XOF
+    """
+                            % royalty
+                            for royalty in royalties
+                        ]
+                    )
+                )
+            else:
+                msg = messages.NO_ROYALTIES
+
             buttons = KeyBoard.CHECK_ROYALTIES
+
+        case "consult-payment-history":
+            payments = Payment.select().where(Payment.user_id == stage.user_id)
+            if len(payments) == 0:
+                msg = messages.NO_PAYMENT_HISTORY_MSG
+            else:
+                msg = messages.PAYMENT_HISTORY_MSG.format(
+                    payments="\n-----------------\n".join(
+                        [str(payment) for payment in payments]
+                    )
+                )
+            buttons = get_keyboard(event.sender_id)
+
         case "confirm":
             model = stage.model
 
@@ -114,8 +149,6 @@ async def action(event: events.CallbackQuery.Event):
 
                 validated_data = {k: v for k, v in data.items() if v is not None}
                 if model == "assurance":
-                    validated_data["start_date"] = date.today()
-                    validated_data["end_date"] = date.today()
                     validated_data["policy_number"] = hashlib.sha256(
                         datetime.now().isoformat().encode()
                     ).hexdigest()[:8]
@@ -149,6 +182,9 @@ async def action(event: events.CallbackQuery.Event):
                 buttons = get_keyboard(event.sender_id)
         case "modify":
             msg = "Saisissez à nouveau votre message"
+            Stage.update({Stage.data: [], Stage.level: "filling"}).where(
+                Stage.user_id == stage.user_id
+            ).execute()
     await bot.send_message(
         event.chat_id,
         msg,
@@ -167,5 +203,7 @@ if __name__ == "__main__":
     )
     bot.run_until_disconnected()
 
-    db.drop_tables([Clause])
+    db.drop_tables(
+        [User, Stage, Payment, Car, Assurance, AssuranceClause, Clause, Document]
+    )
     db.close()

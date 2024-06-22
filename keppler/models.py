@@ -3,6 +3,7 @@ from datetime import datetime as dt, date
 from decimal import Decimal
 
 import peewee as pw
+from peewee import fn
 from playhouse.sqlite_ext import JSONField
 
 
@@ -44,10 +45,15 @@ class User(BaseModel):
     country = pw.CharField(max_length=100, default="")
 
     def get_royalties(self):
-        return {
-            assurance.policy_number: assurance.get_royalty()
-            for assurance in self.assurances.select()
-        }
+        return [
+            {
+                "car": assurance.car.registration_number,
+                "policy_number": assurance.policy_number,
+                "amount": assurance.amount_due,
+            }
+            for assurance in self.assurances.select().join(Car)
+            if assurance.amount_due > 0
+        ]
 
 
 class Document(BaseModel):
@@ -111,27 +117,50 @@ class Assurance(BaseModel):
     policy_number = pw.CharField(max_length=100)
 
     @property
-    def active_clauses(self):
-        return self.clauses.where(
-            AssuranceClause.end_date
-            > dt.today().date() | AssuranceClause.end_date
-            == None
+    def amount(self):
+        return sum([clause.monthly_cost for clause in self.clauses]) * (
+            Decimal((self.end_date - self.start_date).days / 30)
         )
 
-    def get_royalty(self) -> Decimal:
-        return round(Decimal(rd.random() * 1e6), 2)
+    @property
+    def amount_due(self):
+        paid = Decimal(
+            (
+                Payment.select(fn.SUM(Payment.amount))
+                .where(Payment.assurance == self)
+                .scalar()
+            )
+            or 0
+        )
+        return round(self.amount - paid, 2)
+
+
+def get_monthly_cost():
+    return round(Decimal(rd.random() * 1e5), 2)
 
 
 class AssuranceClause(BaseModel):
     assurance = pw.ForeignKeyField(Assurance, backref="clauses")
     clause = pw.ForeignKeyField(Clause, backref="assurances")
+    monthly_cost = pw.DecimalField(
+        max_digits=10, decimal_places=2, default=get_monthly_cost
+    )
 
 
 class Payment(BaseModel):
     user = pw.ForeignKeyField(User, backref="payments")
     assurance = pw.ForeignKeyField(Assurance, backref="payments")
     amount = pw.DecimalField(max_digits=10, decimal_places=2)
-    date = pw.DateField()
+    date = pw.DateField(default=date.today)
+
+    def __str__(self) -> str:
+        return """Date: {date}
+Montant: {amount}
+Assurance : {assurance}""".format(
+            date=self.date.strftime("%d/%m/%Y"),
+            amount=self.amount,
+            assurance=self.assurance.policy_number,
+        )
 
 
 class Stage(BaseModel):

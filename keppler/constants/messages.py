@@ -51,11 +51,28 @@ Par exemple, vous pouvez saisir votre réponse sous la forme :
 Je veux les garanties 1, 3, 6 pour la période du 3 Mars 2024 au 18 Avril 2024 et un paiement tous les 6 mois pour la voiture CE32829RB.
 """
 
+ROYALTY_CHECK_MSG = """
+Voici les montants de vos redevances pour vos différentes assurances :
+{royalties}
+"""
+
+PAYMENT_HISTORY_MSG = """
+Voici l'historique de vos paiements :
+{payments}
+"""
+
+NO_PAYMENT_HISTORY_MSG = "Vous n'avez pas encore effectué de paiement."
+
 INFORMATIONS_ASKING_MSG = {
     "user": ASK_USER_CREATION_MSG,
     "car": ASK_CAR_INFORMATIONS_MSG,
     "assurance": ASK_ASSURANCE_INFORMATIONS_MSG,
 }
+
+REQUIRES_CAR_TO_SUSCRIBE = (
+    "Vous devez d'abord enregistrer une voiture avant de souscrire à une assurance."
+)
+NO_ROYALTIES = "Vous n'avez pas de redevance à payer."
 
 
 class Models(str, Enum):

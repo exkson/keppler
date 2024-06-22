@@ -4,33 +4,21 @@ from telethon import Button
 
 
 class KeyBoard(list, Enum):
-    CREATE_CAR = [
-        Button.inline("📝 Enregistrer une voiture", "create-car"),
-    ]
-    PAY = [Button.inline("Payer ma redevance", "pay")]
-    SUBSRIBE = [Button.inline("Souscrire à une assurance 🚘", "create-assurance")]
-    UNAUTHENTICATED_USER = [
-        Button.inline("📝 M'enregistrer", "create-user"),
-    ]
-    CHECK_ROYALTY = [Button.inline("Consulter ma redevance 🔍", "check-royalties")]
+    CREATE_CAR = [Button.inline("Enregistrer une voiture 🚘", "create-car")]
 
-    AUTHENTICATED_USER = [
-        [*SUBSRIBE, *PAY],
-        CREATE_CAR,
-    ]
-    CAR_CREATION = [
-        CREATE_CAR,
-        [*SUBSRIBE, *PAY],
+    SUBSRIBE = [Button.inline("Souscrire à une assurance 📝", "create-assurance")]
+    UNAUTHENTICATED_USER = [Button.inline(" M'enregistrer ➕", "create-user")]
+
+    CHECK_ROYALTY = [Button.inline("Consulter ma redevance 🔍", "check-royalties")]
+    CONSULT_PAYMENT_HISTORY = [
+        Button.inline("Historique des paiements 💳", "consult-payment-history")
     ]
 
     ASSURANCE_CREATION = [
         SUBSRIBE,
-        [
-            *PAY,
-            *CREATE_CAR,
-        ],
+        CREATE_CAR,
     ]
-    CHECK_ROYALTIES = [CHECK_ROYALTY, *CAR_CREATION]
+    CHECK_ROYALTIES = [[*CHECK_ROYALTY, *CONSULT_PAYMENT_HISTORY], *ASSURANCE_CREATION]
 
     CONFIRM = [
         Button.inline("Confirmer ✅", "confirm"),

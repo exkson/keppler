@@ -12,7 +12,9 @@ async def process(stage: Stage, message: str) -> tuple[str, KeyBoard | None]:
 
         if stage.level == "filling":
             data = await parser.get_model_informations(model=model, message=message)
-            validated_data = parser.validate_model_informations(model=model, data=data)
+            validated_data = parser.validate_model_informations(
+                model=model, data=data, user_id=stage.user_id
+            )
 
             if isinstance(validated_data, str):
                 return validated_data, None
@@ -21,7 +23,9 @@ async def process(stage: Stage, message: str) -> tuple[str, KeyBoard | None]:
                 {Stage.data: [validated_data], Stage.level: "request-confirmation"}
             ).where(Stage.user_id == stage.user_id).execute()
             return (
-                messages.CREATION_CONFIRMATION_MSG[model].format(**validated_data),
+                messages.CREATION_CONFIRMATION_MSG[model].format(
+                    **{key: value or "inconnu" for key, value in validated_data.items()}
+                ),
                 KeyBoard.CONFIRM,
             )
     return message, get_keyboard(stage.user_id)
@@ -34,15 +38,9 @@ def get_keyboard(user_id: int):
 
     user = User.get(id=user_id)
     if user.cars.count() == 0:
-        return KeyBoard.CAR_CREATION
+        return KeyBoard.CREATE_CAR
 
-    if user.cars.count() > user.assurances.count():
-        return KeyBoard.ASSURANCE_CREATION
-
-    if user.cars.count() == user.assurances.count():
-        return KeyBoard.CHECK_ROYALTIES
-
-    return KeyBoard.AUTHENTICATED_USER
+    return KeyBoard.CHECK_ROYALTIES
 
 
 def load_fixtures(fixtures: dict):
