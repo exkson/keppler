@@ -28,12 +28,15 @@ async def process(stage: Stage, message: str) -> tuple[str, KeyBoard | None]:
                 ),
                 KeyBoard.CONFIRM,
             )
+
+    if User.get_or_none(id=stage.user_id) is None:
+        return messages.WELCOME_UNAUTHENTICATED_USER_MSG, KeyBoard.UNAUTHENTICATED_USER
     return message, get_keyboard(stage.user_id)
 
 
 def get_keyboard(user_id: int):
     stage = Stage.get_or_none(user_id=user_id)
-    if not stage:
+    if not stage or User.get_or_none(id=user_id) is None:
         return KeyBoard.UNAUTHENTICATED_USER
 
     user = User.get(id=user_id)

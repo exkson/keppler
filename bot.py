@@ -44,7 +44,7 @@ bot = TelegramClient(
 async def incoming_message(event: events.NewMessage.Event):
     text = event.text
 
-    if text.startswith("/"):
+    if text.startswith("/") and text != "/start":
         message = "Commande executée"
         handle_command(text)
         keyboard = get_keyboard(event.sender_id)
