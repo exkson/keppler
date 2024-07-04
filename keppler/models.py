@@ -1,11 +1,10 @@
 import random as rd
-from datetime import datetime as dt, date
+from datetime import date
 from decimal import Decimal
 
 import peewee as pw
 from peewee import fn
 from playhouse.sqlite_ext import JSONField
-
 
 db = pw.SqliteDatabase("keppler.db3")
 
@@ -116,6 +115,18 @@ class Assurance(BaseModel):
     end_date = pw.DateField()
     policy_number = pw.CharField(max_length=100)
 
+    @classmethod
+    def create(cls, **query):
+        clauses = query.pop("clauses", [])
+        assurance = super().create(**query)
+        AssuranceClause.bulk_create(
+            [
+                AssuranceClause(assurance=assurance, clause_id=clause)
+                for clause in clauses
+            ]
+        )
+        return assurance
+
     @property
     def amount(self):
         return sum([clause.monthly_cost for clause in self.clauses]) * (
@@ -189,6 +200,8 @@ class Stage(BaseModel):
     data = JSONField(default=[])
 
     def reset(self):
-        Stage.update({Stage.process: None, Stage.level: None, Stage.data: []}).where(
-            Stage.user_id == self.user_id
-        ).execute()
+        self.model = None
+        self.action = None
+        self.level = None
+        self.data = []
+        self.save()

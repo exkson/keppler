@@ -1,9 +1,19 @@
+import peewee as pw
+
 from keppler.keyboards import KeyBoard
-from keppler.models import Stage, User
+from keppler.models import (
+    Stage,
+    User,
+    Payment,
+    Car,
+    Assurance,
+    AssuranceClause,
+    Clause,
+    Document,
+)
+from keppler.fixtures import FIXTURES
 from keppler.parser import Parser
 from keppler.constants import messages
-
-parser = Parser()
 
 
 async def process(stage: Stage, message: str) -> tuple[str, KeyBoard | None]:
@@ -11,10 +21,10 @@ async def process(stage: Stage, message: str) -> tuple[str, KeyBoard | None]:
         model = stage.model
 
         if stage.level == "filling":
+            parser = Parser(stage.user_id)
+
             data = await parser.get_model_informations(model=model, message=message)
-            validated_data = parser.validate_model_informations(
-                model=model, data=data, user_id=stage.user_id
-            )
+            validated_data = parser.validate_model_informations(model=model, data=data)
 
             if isinstance(validated_data, str):
                 return validated_data, None
@@ -22,6 +32,7 @@ async def process(stage: Stage, message: str) -> tuple[str, KeyBoard | None]:
             Stage.update(
                 {Stage.data: [validated_data], Stage.level: "request-confirmation"}
             ).where(Stage.user_id == stage.user_id).execute()
+
             return (
                 messages.CREATION_CONFIRMATION_MSG[model].format(
                     **{key: value or "inconnu" for key, value in validated_data.items()}
@@ -49,3 +60,27 @@ def get_keyboard(user_id: int):
 def load_fixtures(fixtures: dict):
     for klass, rows in fixtures.items():
         klass.bulk_create([klass(**row) for row in rows])
+
+
+def setup_db(db):
+    db.create_tables(
+        [User, Stage, Payment, Car, Assurance, AssuranceClause, Clause, Document]
+    )
+    load_fixtures(FIXTURES)
+
+
+def teardown_db(db):
+    db.drop_tables(
+        [User, Stage, Payment, Car, Assurance, AssuranceClause, Clause, Document]
+    )
+    db.close()
+
+
+def get_klass(model: str) -> type[pw.Model]:
+    return {
+        "user": User,
+        "car": Car,
+        "assurance": Assurance,
+        "document": Document,
+        "clause": Clause,
+    }[model]

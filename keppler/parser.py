@@ -1,13 +1,14 @@
 import os
+from datetime import datetime as dt
+import hashlib
 import json
 from typing import Any
 
 from dotenv import load_dotenv
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
-import peewee as pw
 
-from keppler.models import User, Car, Assurance
+from keppler.models import User, Car
 
 load_dotenv()
 
@@ -161,10 +162,11 @@ class Parser:
         ],
     }
 
-    def __init__(self):
+    def __init__(self, user_id: int):
         self.model = "mistral-small-latest"
         self.client = MistralClient(api_key=os.environ["MISTRAL_API_KEY"])
         self.DEBUG = os.environ.get("DEBUG", "1") == "1"
+        self.user_id = user_id
 
     async def get_model_informations(self, model: str, message: str) -> dict[str, Any]:
         if self.DEBUG:
@@ -183,48 +185,53 @@ class Parser:
         return json.loads(text)
 
     def validate_model_informations(
-        self, model: str, data: dict[str, Any], user_id
+            self, model: str, data: dict[str, Any]
     ) -> dict[str, Any] | str:
         required_fields = self.REQUIRED_FIELDS_MAP[model]
-
         missing_fields = [
             self.HUMAN_READABLE_FIELDS[f] for f in required_fields if not data.get(f)
         ]
+
         if missing_fields:
             return "Veuillez reprendre votre message avec toutes les informations demandées y compris {missing_fields}".format(
                 missing_fields=", ".join(missing_fields)
             )
 
-        # FIXME : move this validations to validate_<model>
-        if model == "user" and User.get_or_none(User.email == data["email"]):
-            return "Un utilisateur existe déjà avec ce mail."
-
-        if model == "car":
-            if Car.get_or_none(Car.registration_number == data["registration_number"]):
-                return "Une voiture existe déjà avec cette immatriculation."
-
-        if model == "assurance":
-            if not (
-                Car.get_or_none(
-                    Car.registration_number == data["registration_number"],
-                    Car.user_id == user_id,
-                )
-            ):
-                return "Aucune voiture n'a été trouvée avec cette immatriculation."
-
-            if data["start_date"] > data["end_date"]:
-                return "La date de début doit être inférieure à la date de fin."
-
-            if data.get("frequency") not in [1, 3, 6]:
-                return "La fréquence de paiement doit être 1, 3 ou 6 mois."
-
+        if hasattr(self, f"validate_{model}"):
+            data = getattr(self, f"validate_{model}")(data)
         return data
 
-    def create(self, model: str, validated_data: dict[str, Any], **kwargs) -> pw.Model:
-        klass: type[pw.Model] = {
-            "user": User,
-            "car": Car,
-            "assurance": Assurance,
-        }[model]
+    def validate_user(self, user: dict[str, Any]) -> dict[str, Any] | str:
+        if User.get_or_none(User.email == user["email"]):
+            return "Un utilisateur existe déjà avec ce mail."
 
-        return klass.create(**validated_data, **kwargs)
+        user["id"] = self.user_id
+        return user
+
+    def validate_car(self, car: dict[str, Any]) -> dict[str, Any] | str:
+        if Car.get_or_none(Car.registration_number == car["registration_number"]):
+            return "Une voiture existe déjà avec cette immatriculation."
+        car["user_id"] = self.user_id
+        return car
+
+    def validate_assurance(self, assurance):
+        if not (
+                car := Car.get_or_none(
+                    Car.registration_number == assurance["registration_number"],
+                    Car.user_id == self.user_id,
+                )
+        ):
+            return "Aucune voiture n'a été trouvée avec cette immatriculation."
+
+        if assurance["start_date"] > assurance["end_date"]:
+            return "La date de début doit être inférieure à la date de fin."
+
+        if assurance["frequency"] not in [1, 3, 6]:
+            return "La fréquence de paiement doit être 1, 3 ou 6 mois."
+
+        assurance["car_id"] = car.id
+        assurance["user_id"] = self.user_id
+        assurance["policy_number"] = hashlib.sha256(
+            dt.now().isoformat().encode()
+        ).hexdigest()[:8]
+        return assurance

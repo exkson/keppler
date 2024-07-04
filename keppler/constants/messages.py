@@ -45,7 +45,7 @@ ASK_ASSURANCE_INFORMATIONS_MSG = """Pour enregistrer votre assurance, répondez 
 - Quelle période doit couvrir l'assurance ?
 - À quelle fréquence désirez-vous payez vos redevances ?
 Les garanties que nous offrons sont : 
-{assurance_choices}
+{clause_choices}
 
 Par exemple, vous pouvez saisir votre réponse sous la forme : 
 Je veux les garanties 1, 3, 6 pour la période du 3 Mars 2024 au 18 Avril 2024 et un paiement tous les 6 mois pour la voiture CE32829RB.
@@ -73,6 +73,16 @@ REQUIRES_CAR_TO_SUSCRIBE = (
     "Vous devez d'abord enregistrer une voiture avant de souscrire à une assurance."
 )
 NO_ROYALTIES = "Vous n'avez pas de redevance à payer."
+
+CREATION_SUCCESS_MSG = "Enregistrement effectué avec succès"
+
+ROYALTY = """
+Voiture : %(car)s
+Assurance : %(policy_number)s
+Montant : %(amount)s XOF
+"""
+
+RETYPE_MSG = "Veuillez saisir à nouveau votre message"
 
 
 class Models(str, Enum):
