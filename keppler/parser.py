@@ -185,7 +185,7 @@ class Parser:
         return json.loads(text)
 
     def validate_model_informations(
-            self, model: str, data: dict[str, Any]
+        self, model: str, data: dict[str, Any]
     ) -> dict[str, Any] | str:
         required_fields = self.REQUIRED_FIELDS_MAP[model]
         missing_fields = [
@@ -216,10 +216,10 @@ class Parser:
 
     def validate_assurance(self, assurance):
         if not (
-                car := Car.get_or_none(
-                    Car.registration_number == assurance["registration_number"],
-                    Car.user_id == self.user_id,
-                )
+            car := Car.get_or_none(
+                Car.registration_number == assurance["registration_number"],
+                Car.user_id == self.user_id,
+            )
         ):
             return "Aucune voiture n'a été trouvée avec cette immatriculation."
 

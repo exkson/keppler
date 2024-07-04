@@ -7,11 +7,19 @@ from keppler.utils import process, get_klass, get_keyboard
 
 
 async def handle_command(text: str, sender_id: int) -> tuple[str, KeyBoard]:
-    command, args = text.split(" ", 1)
+    command, args = text, None
+    if len(command) > 1:
+        command, args = text.split(" ", 1)
     msg = ""
     keyboard = None
-    if command == "/pay":
-        # TODO: move logic to class like CommandExecutor
+
+    # TODO: move logic to class like CommandExecutor
+    if command == "/start":
+        Stage.create(user_id=sender_id, model="user", action="create", level="new")
+
+        msg = messages.WELCOME_UNAUTHENTICATED_USER_MSG
+        keyboard = KeyBoard.UNAUTHENTICATED_USER
+    elif command == "/pay":
         add_payment(args)
         msg = "Paiement effectué avec succès"
         keyboard = KeyBoard.CHECK_ROYALTIES
@@ -36,7 +44,7 @@ async def handle_message(text: str, sender_id: int):
 def add_payment(args: str):
     policy_number, amount = args.split(" ", 1)
     if not (
-            assurance := Assurance.get_or_none(Assurance.policy_number == policy_number)
+        assurance := Assurance.get_or_none(Assurance.policy_number == policy_number)
     ):
         return
 
@@ -91,9 +99,8 @@ class ActionExecutor:
 
     def check_royalties(self):
         user = User.get(User.id == self.sender_id)
-        royalties = user.get_royalties()
 
-        if royalties:
+        if royalties := user.get_royalties():
             msg = messages.ROYALTY_CHECK_MSG.format(
                 royalties=("-" * 15).join(
                     [messages.ROYALTY % royalty for royalty in royalties]
